@@ -10,7 +10,6 @@ contract Beeline {
   struct Route {
     address operator;
     string title; // description
-    // uint time; // simplified
     uint collateral; // after fee
     uint price;
     uint settlementStarts;
@@ -18,14 +17,12 @@ contract Beeline {
     bool processed;    // Whether this route's payment has been processed (default: false)
     uint8 seats;
     uint8 sold;
-    uint8 validated;
     uint8 state; // 1: open, 2: boarding, 3: settlement, 4: final
   }
 
   mapping (uint => Route) public routes;
   mapping (uint => address[]) public ticketHolders; // for refund
   mapping (address => mapping (uint => bool)) public hasTicket;
-  mapping (address => mapping (uint => bool)) public validatedTicket;
   mapping (address => uint) public balances; // Withdraw-able user balances
   uint public routesCount = 0;
   uint feesCollected = 0;
@@ -60,6 +57,23 @@ contract Beeline {
     owner = msg.sender;
   }
 
+  /**
+   * Withdraw any funds in user withdraw-able balances
+   */
+  function withdraw(uint _amount) public {
+    if (_amount == 0) {
+      _amount = balances[msg.sender];
+    }
+    if (_amount > balances[msg.sender]) {
+      throw;
+    }
+
+    balances[msg.sender] -= _amount;
+    if (!msg.sender.call.value(_amount)()) {
+      throw;
+    }
+  }
+
 /**
  * ---------------
  * For customers
@@ -79,24 +93,6 @@ contract Beeline {
     hasTicket[msg.sender][_id] = true;
     ticketHolders[_id].push(msg.sender); // for refund
   }
-
-  // Bus operator should ensure that customer validates their ticket before boarding
-  // An app should allow customer to show that he/she has validated his ticket
-  // TODO: Considering removing validation logic
-  function validateTicket(uint _id) public {
-    if (
-      routes[_id].state != 2 ||                  // Boarding state
-      hasTicket[msg.sender][_id] == false ||    // Does not own a ticket
-      validatedTicket[msg.sender][_id] == true  // Already have ticket validated
-    ) {
-      throw;
-    }
-
-    validatedTicket[msg.sender][_id] = true;
-    ++routes[_id].validated;
-  }
-
-
 
 /**
  * ---------------
@@ -123,7 +119,6 @@ contract Beeline {
       processed: false,
       seats: _seats,
       sold: 0,
-      validated: 0,
       state: 1
     });
 
@@ -146,6 +141,24 @@ contract Beeline {
     routes[_id].settlementStarts = now;
   }
 
+  /**
+   * Route that is in settlement state for longer than SETTLEMENT_PERIOD
+   * is now deemed to have carried out successfully and operator is able to collect payments
+   */
+  function finalize(uint _id) public onlyOperator(_id) {
+    if (
+      routes[_id].state != 3 ||
+      routes[_id].processed ||
+      now - routes[_id].settlementStarts < SETTLEMENT_PERIOD // not yet after settlement period
+    ) {
+      throw;
+    }
+
+    routes[_id].state = 4;
+    routes[_id].successful = true;
+    processFunds(_id);
+  }
+
 /**
  * ---------------
  * For Dapp admin (arbitrator)
@@ -153,17 +166,19 @@ contract Beeline {
  */
 
   /**
-   * To finalize a Route that is in settlement state
+   * To arbitrate a Route that is in settlement state, whether the operator has delivered or not
    * @param _id Route ID that is already in settlement state
    * @param _successful Whether the route is deemed to have been successfully executed by the operator
    */
-  function finalize(uint _id, bool _successful) public onlyOwner {
+  function arbitrate(uint _id, bool _successful) public onlyOwner {
+    // Purposely not checking for timeout here
+
     if (routes[_id].state != 3 || routes[_id].processed) {
       throw;
     }
 
     routes[_id].state = 4;
-    routes[_id].successful = !_successful;
+    routes[_id].successful = _successful;
     processFunds(_id);
   }
 

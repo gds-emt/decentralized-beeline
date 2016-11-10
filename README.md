@@ -23,3 +23,47 @@ This is only meant as a demo for a tutorial session on Ethereum.
 
 The features are only meant to demonstrate some basic ideas of a decentralized app and do not cover all potential exploits.
 
+
+## How to run
+
+1. Run a local Ethereum node with JSON-RPC listening at port 8545 _(default)_. [testrpc](https://github.com/ethereumjs/testrpc) would be the most straight-forward method.
+
+  ```bash
+  # Using testrpc (recommended)
+  testrpc
+
+  # If you are running Geth, 
+  # make sure to run in testnet or private net and enable rpc
+  geth --testnet --rpc
+  ```
+
+1. Install dependencies
+
+  ```bash
+  npm install
+  ```
+
+1. Run, during development
+
+  ```bash
+  npm start
+  ```
+
+  Once webpack build is done, open `index.html` in your favorite web browser.
+
+  Webpack is now started in `--watch` mode, any changes done at JavaScript or Solidity files would automatically rebuild the affected modules.
+
+1. Build, for deployment
+
+  ```bash
+  npm run build
+  ```
+
+  Only the `static` directory is required to be hosted and served.
+
+1. Run tests
+
+  ```bash
+  npm test
+  ```
+  

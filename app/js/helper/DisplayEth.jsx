@@ -1,8 +1,5 @@
 import React from 'react';
-import { web3 } from '../../../contract/.deployed';
-
-// import BigNumber from 'twilio';
-// import { BigNumber } from '../../../contract/Notifier.sol';
+import { web3 } from '../../../contract/Beeline.sol';
 const BigNumber = web3.eth.gasPrice.constructor;
 
 const propTypes = {

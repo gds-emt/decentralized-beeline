@@ -1,11 +1,12 @@
 import React from 'react';
-// import Notifier from './Notifier';
-
+import Accounts from './Accounts';
+import Routes from './Routes';
 
 export default function App() {
   return (
     <div className="app">
-    Hi
+    <Routes />
+    <Accounts />
     </div>
   );
 }
